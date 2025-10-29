@@ -65,6 +65,12 @@ const config: HardhatUserConfig = {
       url: `https://arb-mainnet.g.alchemy.com/v2/${providerApiKey}`,
       accounts: [deployerPrivateKey],
     },
+    flowEVMTestnet: {
+      url: "https://testnet.evm.nodes.onflow.org",
+      chainId: 545,
+      accounts: [deployerPrivateKey],
+      gasPrice: 1000000000, // 1 gwei
+    },
     arbitrumSepolia: {
       url: `https://arb-sepolia.g.alchemy.com/v2/${providerApiKey}`,
       accounts: [deployerPrivateKey],

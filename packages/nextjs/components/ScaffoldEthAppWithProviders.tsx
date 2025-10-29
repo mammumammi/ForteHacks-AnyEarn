@@ -5,6 +5,7 @@ import { RainbowKitProvider, darkTheme, lightTheme } from "@rainbow-me/rainbowki
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AppProgressBar as ProgressBar } from "next-nprogress-bar";
 import { useTheme } from "next-themes";
+import { usePathname } from "next/navigation";
 import { Toaster } from "react-hot-toast";
 import { WagmiProvider } from "wagmi";
 import { Footer } from "~~/components/Footer";
@@ -15,6 +16,19 @@ import { wagmiConfig } from "~~/services/web3/wagmiConfig";
 
 const ScaffoldEthApp = ({ children }: { children: React.ReactNode }) => {
   useInitializeNativeCurrencyPrice();
+  const pathname = usePathname();
+  const isMapPage = pathname === "/locationrouter";
+
+  if (isMapPage) {
+    return (
+      <>
+        <div className="h-screen w-screen overflow-hidden">
+          {children}
+        </div>
+        <Toaster />
+      </>
+    );
+  }
 
   return (
     <>

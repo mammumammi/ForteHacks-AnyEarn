@@ -1935,6 +1935,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@mapbox/corslite@npm:0.0.7":
+  version: 0.0.7
+  resolution: "@mapbox/corslite@npm:0.0.7"
+  checksum: ce943e303b660fa417fbdb0257ce6d8cc58c41dbff3a1006ac25ee550a18d66e2c80fd18c26cea78d97b7a079d4a456b906900847618f574c487ae19d0a0847c
+  languageName: node
+  linkType: hard
+
 "@mapbox/node-pre-gyp@npm:^1.0.5":
   version: 1.0.11
   resolution: "@mapbox/node-pre-gyp@npm:1.0.11"
@@ -1951,6 +1958,15 @@ __metadata:
   bin:
     node-pre-gyp: bin/node-pre-gyp
   checksum: b848f6abc531a11961d780db813cc510ca5a5b6bf3184d72134089c6875a91c44d571ba6c1879470020803f7803609e7b2e6e429651c026fe202facd11d444b8
+  languageName: node
+  linkType: hard
+
+"@mapbox/polyline@npm:^0.2.0":
+  version: 0.2.0
+  resolution: "@mapbox/polyline@npm:0.2.0"
+  bin:
+    polyline: bin/polyline.bin.js
+  checksum: 37fceafe1980881fb5f105c972470ed36f7a70ec0bd8eb30f9f7810e2277ae2effcfd74411631efb8cb26ac3401bb0af9ec1fa308ddbd85245d98e875eb901d5
   languageName: node
   linkType: hard
 
@@ -3227,6 +3243,17 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@react-leaflet/core@npm:^3.0.0":
+  version: 3.0.0
+  resolution: "@react-leaflet/core@npm:3.0.0"
+  peerDependencies:
+    leaflet: ^1.9.0
+    react: ^19.0.0
+    react-dom: ^19.0.0
+  checksum: 38abc98bbf8c08bafa01fe83bd74e3142d250de42c08f7b1f981c96e6396a252e41e65c78331c413642e08ed943945a22c853946a9c3133749e7d6c97d234d11
+  languageName: node
+  linkType: hard
+
 "@reown/appkit-common@npm:1.7.8":
   version: 1.7.8
   resolution: "@reown/appkit-common@npm:1.7.8"
@@ -3552,6 +3579,8 @@ __metadata:
     "@tailwindcss/postcss": 4.0.15
     "@tanstack/react-query": ~5.59.15
     "@trivago/prettier-plugin-sort-imports": ~4.3.0
+    "@types/leaflet": ^1.9.21
+    "@types/leaflet-routing-machine": ^3.2.9
     "@types/node": ~18.19.50
     "@types/react": ~19.0.7
     "@uniswap/sdk-core": ~5.8.2
@@ -3567,6 +3596,8 @@ __metadata:
     eslint-config-prettier: ~10.1.1
     eslint-plugin-prettier: ~5.2.4
     kubo-rpc-client: ~5.0.2
+    leaflet: ^1.9.4
+    leaflet-routing-machine: ^3.2.12
     next: ~15.2.3
     next-nprogress-bar: ~2.3.13
     next-themes: ~0.3.0
@@ -3576,6 +3607,7 @@ __metadata:
     react: ~19.0.0
     react-dom: ~19.0.0
     react-hot-toast: ~2.4.0
+    react-leaflet: ^5.0.0
     tailwindcss: 4.1.3
     type-fest: ~4.26.1
     typescript: ~5.8.2
@@ -4181,6 +4213,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@types/geojson@npm:*":
+  version: 7946.0.16
+  resolution: "@types/geojson@npm:7946.0.16"
+  checksum: d66e5e023f43b3e7121448117af1930af7d06410a32a585a8bc9c6bb5d97e0d656cd93d99e31fa432976c32e98d4b780f82bf1fd1acd20ccf952eb6b8e39edf2
+  languageName: node
+  linkType: hard
+
 "@types/glob@npm:^7.1.1":
   version: 7.2.0
   resolution: "@types/glob@npm:7.2.0"
@@ -4209,6 +4248,24 @@ __metadata:
   version: 0.0.29
   resolution: "@types/json5@npm:0.0.29"
   checksum: e60b153664572116dfea673c5bda7778dbff150498f44f998e34b5886d8afc47f16799280e4b6e241c0472aef1bc36add771c569c68fc5125fc2ae519a3eb9ac
+  languageName: node
+  linkType: hard
+
+"@types/leaflet-routing-machine@npm:^3.2.9":
+  version: 3.2.9
+  resolution: "@types/leaflet-routing-machine@npm:3.2.9"
+  dependencies:
+    "@types/leaflet": ^1.9
+  checksum: 43231bd6f9d0b77e4769fbf1a4aaf3aea439238a235a75c705a5ea91e83a662187ba45e4492ec93b4766aed51dd3c1dcc6de38bd885e4f8e454686a5476fa1cb
+  languageName: node
+  linkType: hard
+
+"@types/leaflet@npm:^1.9, @types/leaflet@npm:^1.9.21":
+  version: 1.9.21
+  resolution: "@types/leaflet@npm:1.9.21"
+  dependencies:
+    "@types/geojson": "*"
+  checksum: 247f6492add1af10beabb410d2f7d6d272d0ffdbc96d2ad57175bbefcc6adf36e45dc44bbd9e3b736a7d7cea0ee2198ea364bf752db7f00ecffddc1996798fe1
   languageName: node
   linkType: hard
 
@@ -11595,6 +11652,24 @@ __metadata:
   languageName: node
   linkType: hard
 
+"leaflet-routing-machine@npm:^3.2.12":
+  version: 3.2.12
+  resolution: "leaflet-routing-machine@npm:3.2.12"
+  dependencies:
+    "@mapbox/corslite": 0.0.7
+    "@mapbox/polyline": ^0.2.0
+    osrm-text-instructions: ^0.13.2
+  checksum: 8922dbfc631dd23f83142c8ec364b561294dcbb030a17c532bdfd77aa83c5a7124f36122ff675cae57dd69052832c2f5436c001a80bb3b6404ac2e7db0e1d3cb
+  languageName: node
+  linkType: hard
+
+"leaflet@npm:^1.9.4":
+  version: 1.9.4
+  resolution: "leaflet@npm:1.9.4"
+  checksum: bfc79f17a247b37b92d84b3c78702501603392d6589fde606de4a825d11f1609d90225388834f2e0709dac327e52dcd4b4b9cc9fd3d590060c5b1e53b84fa6c6
+  languageName: node
+  linkType: hard
+
 "levn@npm:^0.4.1":
   version: 0.4.1
   resolution: "levn@npm:0.4.1"
@@ -13378,6 +13453,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"osrm-text-instructions@npm:^0.13.2":
+  version: 0.13.4
+  resolution: "osrm-text-instructions@npm:0.13.4"
+  checksum: 3a50e03969f63459af805cc1c77ae78e933740c242a1086e2273593137c5b97c520e702012c5e59b4ad95a5499582aef309d8af2a418ff8730d264df0bf2fe76
+  languageName: node
+  linkType: hard
+
 "own-keys@npm:^1.0.1":
   version: 1.0.1
   resolution: "own-keys@npm:1.0.1"
@@ -14407,6 +14489,19 @@ __metadata:
   languageName: node
   linkType: hard
 
+"react-leaflet@npm:^5.0.0":
+  version: 5.0.0
+  resolution: "react-leaflet@npm:5.0.0"
+  dependencies:
+    "@react-leaflet/core": ^3.0.0
+  peerDependencies:
+    leaflet: ^1.9.0
+    react: ^19.0.0
+    react-dom: ^19.0.0
+  checksum: 830a48bacca1553b29f0a22a6aeb4590541d4c7a36cceb4653363edeec880d76f2418e487b20e3840097fea19cc8c53a1295eeb4f72212822c51dc0641c92db8
+  languageName: node
+  linkType: hard
+
 "react-native-fetch-api@npm:^3.0.0":
   version: 3.0.0
   resolution: "react-native-fetch-api@npm:3.0.0"
@@ -14976,8 +15071,13 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "se-2@workspace:."
   dependencies:
+    "@types/leaflet": ^1.9.21
+    "@types/leaflet-routing-machine": ^3.2.9
     husky: ~9.1.6
+    leaflet: ^1.9.4
+    leaflet-routing-machine: ^3.2.12
     lint-staged: ~13.2.2
+    react-leaflet: ^5.0.0
   languageName: unknown
   linkType: soft
 
