@@ -7,7 +7,7 @@ import { GenericContractsDeclaration } from "~~/utils/scaffold-eth/contract";
 const deployedContracts = {
   545: {
     ServiceContract: {
-      address: "0xB2968Bc2251873D519665cbd9062075a8feB2C8F",
+      address: "0xfF4f2C5ee5a4e2ae0F818cd89780D000314adf4c",
       abi: [
         {
           inputs: [
@@ -19,6 +19,31 @@ const deployedContracts = {
           ],
           stateMutability: "nonpayable",
           type: "constructor",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
+              internalType: "uint256",
+              name: "id",
+              type: "uint256",
+            },
+            {
+              indexed: true,
+              internalType: "address",
+              name: "acceptedBy",
+              type: "address",
+            },
+            {
+              indexed: false,
+              internalType: "string",
+              name: "completionImageHash",
+              type: "string",
+            },
+          ],
+          name: "CompletionImageSubmitted",
+          type: "event",
         },
         {
           anonymous: false,
@@ -190,6 +215,12 @@ const deployedContracts = {
               name: "flowAmount",
               type: "uint256",
             },
+            {
+              indexed: false,
+              internalType: "string",
+              name: "imageIpfsHash",
+              type: "string",
+            },
           ],
           name: "ServiceCreated",
           type: "event",
@@ -306,6 +337,11 @@ const deployedContracts = {
               name: "_endLocation",
               type: "string",
             },
+            {
+              internalType: "string",
+              name: "_imageIpfsHash",
+              type: "string",
+            },
           ],
           name: "createService",
           outputs: [],
@@ -404,6 +440,21 @@ const deployedContracts = {
                   internalType: "uint256",
                   name: "nftTokenId",
                   type: "uint256",
+                },
+                {
+                  internalType: "string",
+                  name: "imageIpfsHash",
+                  type: "string",
+                },
+                {
+                  internalType: "string",
+                  name: "completionImageHash",
+                  type: "string",
+                },
+                {
+                  internalType: "bool",
+                  name: "completionSubmitted",
+                  type: "bool",
                 },
               ],
               internalType: "struct ServiceContract.Service",
@@ -593,8 +644,41 @@ const deployedContracts = {
               name: "nftTokenId",
               type: "uint256",
             },
+            {
+              internalType: "string",
+              name: "imageIpfsHash",
+              type: "string",
+            },
+            {
+              internalType: "string",
+              name: "completionImageHash",
+              type: "string",
+            },
+            {
+              internalType: "bool",
+              name: "completionSubmitted",
+              type: "bool",
+            },
           ],
           stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "_serviceId",
+              type: "uint256",
+            },
+            {
+              internalType: "string",
+              name: "_completionImageHash",
+              type: "string",
+            },
+          ],
+          name: "submitCompletionImage",
+          outputs: [],
+          stateMutability: "nonpayable",
           type: "function",
         },
         {
@@ -603,10 +687,10 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deployedOnBlock: 76223933,
+      deployedOnBlock: 76535615,
     },
     ServiceNFT: {
-      address: "0xeE00D4e452410cE8a28D45bCd888cADa2ff73c12",
+      address: "0x953693c87E78166c9Ea4AfC90acA8792F95Da8d4",
       abi: [
         {
           inputs: [],
@@ -792,32 +876,93 @@ const deployedContracts = {
           anonymous: false,
           inputs: [
             {
-              indexed: false,
+              indexed: true,
               internalType: "uint256",
-              name: "_fromTokenId",
+              name: "tokenId",
               type: "uint256",
+            },
+            {
+              indexed: true,
+              internalType: "address",
+              name: "recipient",
+              type: "address",
             },
             {
               indexed: false,
               internalType: "uint256",
-              name: "_toTokenId",
+              name: "amount",
               type: "uint256",
             },
           ],
-          name: "BatchMetadataUpdate",
+          name: "EscrowReleased",
           type: "event",
         },
         {
           anonymous: false,
           inputs: [
             {
+              indexed: true,
+              internalType: "uint256",
+              name: "tokenId",
+              type: "uint256",
+            },
+            {
+              indexed: true,
+              internalType: "uint256",
+              name: "serviceId",
+              type: "uint256",
+            },
+            {
+              indexed: false,
+              internalType: "address",
+              name: "acceptor",
+              type: "address",
+            },
+            {
               indexed: false,
               internalType: "uint256",
-              name: "_tokenId",
+              name: "amount",
               type: "uint256",
             },
           ],
-          name: "MetadataUpdate",
+          name: "NFTBurned",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
+              internalType: "uint256",
+              name: "tokenId",
+              type: "uint256",
+            },
+            {
+              indexed: true,
+              internalType: "uint256",
+              name: "serviceId",
+              type: "uint256",
+            },
+            {
+              indexed: false,
+              internalType: "address",
+              name: "requester",
+              type: "address",
+            },
+            {
+              indexed: false,
+              internalType: "address",
+              name: "acceptor",
+              type: "address",
+            },
+            {
+              indexed: false,
+              internalType: "uint256",
+              name: "amount",
+              type: "uint256",
+            },
+          ],
+          name: "NFTMinted",
           type: "event",
         },
         {
@@ -837,74 +982,6 @@ const deployedContracts = {
             },
           ],
           name: "OwnershipTransferred",
-          type: "event",
-        },
-        {
-          anonymous: false,
-          inputs: [
-            {
-              indexed: true,
-              internalType: "uint256",
-              name: "tokenId",
-              type: "uint256",
-            },
-            {
-              indexed: true,
-              internalType: "uint256",
-              name: "serviceId",
-              type: "uint256",
-            },
-            {
-              indexed: true,
-              internalType: "address",
-              name: "acceptor",
-              type: "address",
-            },
-            {
-              indexed: false,
-              internalType: "uint256",
-              name: "amount",
-              type: "uint256",
-            },
-          ],
-          name: "ServiceNFTCompleted",
-          type: "event",
-        },
-        {
-          anonymous: false,
-          inputs: [
-            {
-              indexed: true,
-              internalType: "uint256",
-              name: "tokenId",
-              type: "uint256",
-            },
-            {
-              indexed: true,
-              internalType: "uint256",
-              name: "serviceId",
-              type: "uint256",
-            },
-            {
-              indexed: true,
-              internalType: "address",
-              name: "requester",
-              type: "address",
-            },
-            {
-              indexed: false,
-              internalType: "address",
-              name: "acceptor",
-              type: "address",
-            },
-            {
-              indexed: false,
-              internalType: "uint256",
-              name: "escrowAmount",
-              type: "uint256",
-            },
-          ],
-          name: "ServiceNFTMinted",
           type: "event",
         },
         {
@@ -983,6 +1060,13 @@ const deployedContracts = {
           type: "function",
         },
         {
+          inputs: [],
+          name: "emergencyWithdraw",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
           inputs: [
             {
               internalType: "uint256",
@@ -1009,7 +1093,7 @@ const deployedContracts = {
               type: "uint256",
             },
           ],
-          name: "getServiceNFT",
+          name: "getNFTData",
           outputs: [
             {
               components: [
@@ -1038,15 +1122,23 @@ const deployedContracts = {
                   name: "completed",
                   type: "bool",
                 },
-                {
-                  internalType: "uint256",
-                  name: "createdAt",
-                  type: "uint256",
-                },
               ],
-              internalType: "struct ServiceNFT.ServiceNFTData",
+              internalType: "struct ServiceNFT.NFTData",
               name: "",
               type: "tuple",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "getTokenCounter",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
             },
           ],
           stateMutability: "view",
@@ -1132,6 +1224,45 @@ const deployedContracts = {
               internalType: "string",
               name: "",
               type: "string",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+          ],
+          name: "nftData",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "serviceId",
+              type: "uint256",
+            },
+            {
+              internalType: "address",
+              name: "requester",
+              type: "address",
+            },
+            {
+              internalType: "address",
+              name: "acceptor",
+              type: "address",
+            },
+            {
+              internalType: "uint256",
+              name: "escrowAmount",
+              type: "uint256",
+            },
+            {
+              internalType: "bool",
+              name: "completed",
+              type: "bool",
             },
           ],
           stateMutability: "view",
@@ -1228,44 +1359,13 @@ const deployedContracts = {
           type: "function",
         },
         {
-          inputs: [
-            {
-              internalType: "uint256",
-              name: "",
-              type: "uint256",
-            },
-          ],
-          name: "serviceNFTs",
+          inputs: [],
+          name: "serviceContract",
           outputs: [
             {
-              internalType: "uint256",
-              name: "serviceId",
-              type: "uint256",
-            },
-            {
               internalType: "address",
-              name: "requester",
+              name: "",
               type: "address",
-            },
-            {
-              internalType: "address",
-              name: "acceptor",
-              type: "address",
-            },
-            {
-              internalType: "uint256",
-              name: "escrowAmount",
-              type: "uint256",
-            },
-            {
-              internalType: "bool",
-              name: "completed",
-              type: "bool",
-            },
-            {
-              internalType: "uint256",
-              name: "createdAt",
-              type: "uint256",
             },
           ],
           stateMutability: "view",
@@ -1279,7 +1379,7 @@ const deployedContracts = {
               type: "uint256",
             },
           ],
-          name: "serviceToToken",
+          name: "serviceToTokenId",
           outputs: [
             {
               internalType: "uint256",
@@ -1304,6 +1404,19 @@ const deployedContracts = {
             },
           ],
           name: "setApprovalForAll",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "_serviceContract",
+              type: "address",
+            },
+          ],
+          name: "setServiceContract",
           outputs: [],
           stateMutability: "nonpayable",
           type: "function",
@@ -1401,34 +1514,23 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {
-        approve:
-          "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol",
-        balanceOf:
-          "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol",
-        getApproved:
-          "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol",
-        isApprovedForAll:
-          "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol",
-        name: "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol",
-        ownerOf:
-          "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol",
-        safeTransferFrom:
-          "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol",
-        setApprovalForAll:
-          "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol",
-        supportsInterface:
-          "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol",
-        symbol:
-          "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol",
-        tokenURI:
-          "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol",
-        transferFrom:
-          "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol",
+        approve: "@openzeppelin/contracts/token/ERC721/ERC721.sol",
+        balanceOf: "@openzeppelin/contracts/token/ERC721/ERC721.sol",
+        getApproved: "@openzeppelin/contracts/token/ERC721/ERC721.sol",
+        isApprovedForAll: "@openzeppelin/contracts/token/ERC721/ERC721.sol",
+        name: "@openzeppelin/contracts/token/ERC721/ERC721.sol",
+        ownerOf: "@openzeppelin/contracts/token/ERC721/ERC721.sol",
+        safeTransferFrom: "@openzeppelin/contracts/token/ERC721/ERC721.sol",
+        setApprovalForAll: "@openzeppelin/contracts/token/ERC721/ERC721.sol",
+        supportsInterface: "@openzeppelin/contracts/token/ERC721/ERC721.sol",
+        symbol: "@openzeppelin/contracts/token/ERC721/ERC721.sol",
+        tokenURI: "@openzeppelin/contracts/token/ERC721/ERC721.sol",
+        transferFrom: "@openzeppelin/contracts/token/ERC721/ERC721.sol",
         owner: "@openzeppelin/contracts/access/Ownable.sol",
         renounceOwnership: "@openzeppelin/contracts/access/Ownable.sol",
         transferOwnership: "@openzeppelin/contracts/access/Ownable.sol",
       },
-      deployedOnBlock: 76221285,
+      deployedOnBlock: 76535593,
     },
     YourContract: {
       address: "0xd6cD0cc34e547857041C9eF207c807F5FB40aC72",

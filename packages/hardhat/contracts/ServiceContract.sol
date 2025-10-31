@@ -11,7 +11,7 @@ interface IServiceNFT {
 
 /**
  * A smart contract that manages service requests with NFT escrow
- * Implements two-signature approval system
+ * Implements two-signature approval system with image proof of completion
  */
 contract ServiceContract {
     struct Service {
@@ -21,11 +21,14 @@ contract ServiceContract {
         string endLocation;
         uint256 flowAmount;
         address requester;
-        address pendingAcceptor; // New: Person who wants to accept (pending approval)
-        address acceptedBy;      // Confirmed acceptor after requester approves
+        address pendingAcceptor;
+        address acceptedBy;
         bool completed;
         uint256 createdAt;
         uint256 nftTokenId;
+        string imageIpfsHash;           // Service request image
+        string completionImageHash;     // Completion proof image
+        bool completionSubmitted;       // Has acceptor submitted completion image?
     }
 
     uint256 public serviceCount;
@@ -43,7 +46,8 @@ contract ServiceContract {
         string title,
         string startLocation,
         string endLocation,
-        uint256 flowAmount
+        uint256 flowAmount,
+        string imageIpfsHash
     );
     
     event ServiceAcceptanceRequested(
@@ -65,6 +69,12 @@ contract ServiceContract {
         address indexed rejectedAcceptor
     );
     
+    event CompletionImageSubmitted(
+        uint256 indexed id,
+        address indexed acceptedBy,
+        string completionImageHash
+    );
+    
     event ServiceCompleted(
         uint256 indexed id,
         address indexed requester,
@@ -84,12 +94,14 @@ contract ServiceContract {
     function createService(
         string memory _title,
         string memory _startLocation,
-        string memory _endLocation
+        string memory _endLocation,
+        string memory _imageIpfsHash
     ) public payable {
         require(msg.value > 0, "Flow amount must be greater than 0");
         require(bytes(_title).length > 0, "Title cannot be empty");
         require(bytes(_startLocation).length > 0, "Start location cannot be empty");
         require(bytes(_endLocation).length > 0, "End location cannot be empty");
+        require(bytes(_imageIpfsHash).length > 0, "Image hash cannot be empty");
         require(activeServicesCount[msg.sender] < MAX_ACTIVE_SERVICES, "Too many active services");
 
         serviceCount++;
@@ -104,21 +116,29 @@ contract ServiceContract {
             acceptedBy: address(0),
             completed: false,
             createdAt: block.timestamp,
-            nftTokenId: 0
+            nftTokenId: 0,
+            imageIpfsHash: _imageIpfsHash,
+            completionImageHash: "",
+            completionSubmitted: false
         });
 
         requesterServices[msg.sender].push(serviceCount);
         activeServicesCount[msg.sender]++;
 
         console.log("Service created with ID:", serviceCount);
+        console.log("Image IPFS Hash:", _imageIpfsHash);
 
-        emit ServiceCreated(serviceCount, msg.sender, _title, _startLocation, _endLocation, msg.value);
+        emit ServiceCreated(
+            serviceCount, 
+            msg.sender, 
+            _title, 
+            _startLocation, 
+            _endLocation, 
+            msg.value,
+            _imageIpfsHash
+        );
     }
 
-    /**
-     * STEP 1: Request to accept service (no approval yet)
-     * This creates a pending request that the requester must approve
-     */
     function requestServiceAcceptance(uint256 _serviceId) public {
         require(_serviceId > 0 && _serviceId <= serviceCount, "Invalid service ID");
         Service storage service = services[_serviceId];
@@ -135,10 +155,6 @@ contract ServiceContract {
         emit ServiceAcceptanceRequested(_serviceId, service.requester, msg.sender);
     }
 
-    /**
-     * STEP 2: Requester approves the acceptance (mints NFT)
-     * Only the service requester can call this
-     */
     function approveServiceAcceptance(uint256 _serviceId) public {
         require(_serviceId > 0 && _serviceId <= serviceCount, "Invalid service ID");
         Service storage service = services[_serviceId];
@@ -149,11 +165,10 @@ contract ServiceContract {
 
         address acceptor = service.pendingAcceptor;
         service.acceptedBy = acceptor;
-        service.pendingAcceptor = address(0); // Clear pending
+        service.pendingAcceptor = address(0);
         
         acceptedServices[acceptor].push(_serviceId);
 
-        // Mint NFT and transfer escrow to NFT contract
         uint256 tokenId = serviceNFT.mintServiceNFT{value: service.flowAmount}(
             _serviceId,
             service.requester,
@@ -168,10 +183,6 @@ contract ServiceContract {
         emit ServiceAccepted(_serviceId, service.requester, acceptor, tokenId);
     }
 
-    /**
-     * STEP 2 (Alternative): Requester rejects the acceptance
-     * Only the service requester can call this
-     */
     function rejectServiceAcceptance(uint256 _serviceId) public {
         require(_serviceId > 0 && _serviceId <= serviceCount, "Invalid service ID");
         Service storage service = services[_serviceId];
@@ -187,6 +198,29 @@ contract ServiceContract {
         emit ServiceAcceptanceRejected(_serviceId, msg.sender, rejected);
     }
 
+    /**
+     * NEW: Submit completion image (called by service provider)
+     */
+    function submitCompletionImage(uint256 _serviceId, string memory _completionImageHash) public {
+        require(_serviceId > 0 && _serviceId <= serviceCount, "Invalid service ID");
+        Service storage service = services[_serviceId];
+        require(service.acceptedBy == msg.sender, "Only acceptor can submit completion");
+        require(service.completed == false, "Service already completed");
+        require(!service.completionSubmitted, "Completion already submitted");
+        require(bytes(_completionImageHash).length > 0, "Completion image hash cannot be empty");
+
+        service.completionImageHash = _completionImageHash;
+        service.completionSubmitted = true;
+
+        console.log("Completion image submitted for service:", _serviceId);
+        console.log("Completion Image Hash:", _completionImageHash);
+
+        emit CompletionImageSubmitted(_serviceId, msg.sender, _completionImageHash);
+    }
+
+    /**
+     * MODIFIED: Complete service (now called by requester after verifying completion image)
+     */
     function completeService(uint256 _serviceId) public {
         require(_serviceId > 0 && _serviceId <= serviceCount, "Invalid service ID");
         Service storage service = services[_serviceId];
@@ -194,6 +228,7 @@ contract ServiceContract {
         require(service.acceptedBy != address(0), "Service not accepted yet");
         require(service.completed == false, "Service already completed");
         require(service.nftTokenId > 0, "No NFT associated");
+        require(service.completionSubmitted, "Completion image not submitted yet");
 
         service.completed = true;
         activeServicesCount[service.requester]--;

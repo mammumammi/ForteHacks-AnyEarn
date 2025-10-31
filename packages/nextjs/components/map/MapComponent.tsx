@@ -11,6 +11,7 @@ import { useScaffoldWriteContract, useScaffoldReadContract, useScaffoldContract 
 import { notification } from "~~/utils/scaffold-eth";
 import { Address } from "~~/components/scaffold-eth";
 import { usePublicClient } from "wagmi";
+import { ImageUpload } from "../ImageUpload";
 
 const createOrangeMarkerIcon = (name: string) => L.divIcon({
   className: 'custom-orange-marker',
@@ -35,6 +36,9 @@ interface ServiceRequest {
   acceptedBy?: string;
   completed?: boolean;
   nftTokenId?: bigint;
+  imageIpfsHash?: string;
+  completionImageHash?: string;
+  completionSubmitted?: boolean;
 }
 
 const FlyToUserLocation = ({ userLocation }: { userLocation: LatLng }) => {
@@ -61,31 +65,43 @@ const MapComponent = () => {
   const [showList, setShowList] = useState(false);
   const [selected, setSelected] = useState<ServiceRequest | null>(null);
   const [loading, setLoading] = useState(false);
-
+  const [imageIpfsHash, setImageIpfsHash] = useState<string>("");
+  const [imageUrl, setImageUrl] = useState<string>("");
+  const [completionImageHash, setCompletionImageHash] = useState<string>("");
+  const [completionImageUrl, setCompletionImageUrl] = useState<string>("");
+  const [showCompletionUpload, setShowCompletionUpload] = useState<string | null>(null);
+  
   const { writeContractAsync, isMining } = useScaffoldWriteContract({ contractName: "ServiceContract" });
   const publicClient = usePublicClient();
   const { data: contractData } = useScaffoldContract({ contractName: "ServiceContract" });
+
+  const handleImageUpload = useCallback((ipfsHash: string, url: string) => {
+    setImageIpfsHash(ipfsHash);
+    setImageUrl(url);
+    console.log("Image uploaded - IPFS Hash:", ipfsHash, "URL:", url);
+  }, []);
+  
+  const handleCompletionImageUpload = useCallback((ipfsHash: string, url: string) => {
+    setCompletionImageHash(ipfsHash);
+    setCompletionImageUrl(url);
+    console.log("Completion Image uploaded - IPFS Hash:", ipfsHash, "URL:", url);
+  }, []);
   
   const { data: allServiceIds } = useScaffoldReadContract({ 
     contractName: "ServiceContract", 
-    functionName: "getAllServiceIds", // Changed back to getAllServiceIds since getActiveServiceIds might not exist
+    functionName: "getAllServiceIds",
     watch: true 
   });
 
-  // Use useMemo to stabilize TOKEN reference
   const TOKEN = useMemo(() => process.env.NEXT_PUBLIC_MAPBOX_API_KEY || "", []);
 
-  // Convert BigInt array to string array for stable comparison
   const serviceIdsString = useMemo(() => {
     if (!allServiceIds || allServiceIds.length === 0) return "[]";
-    // Convert BigInt to string before JSON.stringify
     return JSON.stringify(allServiceIds.map((id: bigint) => id.toString()));
   }, [allServiceIds]);
   
-  // Stabilize userLocation to prevent unnecessary re-renders
   const stableUserLocation = useMemo(() => userLocation, [userLocation?.[0], userLocation?.[1]]);
   
-  // Memoize fetchSuggestions to prevent recreation on every render
   const fetchSuggestions = useCallback(async (query: string, setter: (s: Suggestion[]) => void) => {
     if (query.length < 3) { setter([]); return; }
     try {
@@ -96,15 +112,11 @@ const MapComponent = () => {
   }, [TOKEN, stableUserLocation]);
 
   useEffect(() => {
-    console.log("Checking geolocation support...");
-    
     const getIPLocation = async () => {
       try {
-        console.log("Attempting IP-based geolocation...");
         const res = await fetch('https://ipapi.co/json/');
         const data = await res.json();
         if (data.latitude && data.longitude) {
-          console.log("✅ IP location obtained:", data.city, data.country);
           setUserLocation([data.latitude, data.longitude]);
           notification.success(`Location detected: ${data.city}, ${data.country}`);
           return true;
@@ -116,53 +128,29 @@ const MapComponent = () => {
     };
     
     if (!navigator.geolocation) {
-      console.warn("Geolocation not supported by this browser");
       notification.warning("GPS not available, trying IP-based location...");
       getIPLocation().then(success => {
         if (!success) {
-          setUserLocation([40.7128, -74.0060]); // Default to NYC
+          setUserLocation([40.7128, -74.0060]);
           notification.info("Using default location (New York City)");
         }
       });
       return;
     }
     
-    console.log("Requesting GPS position...");
-    
     navigator.geolocation.getCurrentPosition(
       p => {
-        console.log("✅ GPS location obtained successfully!");
-        console.log("Latitude:", p.coords.latitude);
-        console.log("Longitude:", p.coords.longitude);
-        console.log("Accuracy:", p.coords.accuracy, "meters");
         setUserLocation([p.coords.latitude, p.coords.longitude]);
         notification.success("GPS location detected!");
       },
       async err => {
-        console.error("❌ GPS error:");
-        console.error("Error code:", err.code);
-        console.error("Error message:", err.message);
-        
-        if (err.code === 1) {
-          notification.warning("Location permission denied. Trying IP-based location...");
-        } else if (err.code === 2) {
-          notification.warning("GPS unavailable. Trying IP-based location...");
-        } else if (err.code === 3) {
-          notification.warning("GPS timeout. Trying IP-based location...");
-        }
-        
-        // Try IP-based location as fallback
         const success = await getIPLocation();
         if (!success) {
           setUserLocation([40.7128, -74.0060]);
           notification.info("Using default location (New York City)");
         }
       },
-      { 
-        enableHighAccuracy: false, 
-        timeout: 5000, 
-        maximumAge: 600000 
-      }
+      { enableHighAccuracy: false, timeout: 5000, maximumAge: 600000 }
     );
   }, []);
 
@@ -170,32 +158,27 @@ const MapComponent = () => {
   useEffect(() => { const t = setTimeout(() => fetchSuggestions(toLoc, setToSugg), 300); return () => clearTimeout(t); }, [toLoc, fetchSuggestions]);
 
   useEffect(() => {
-    // Prevent running if dependencies aren't ready
     if (!serviceIdsString || serviceIdsString === "[]") {
       setServices([]);
       return;
     }
     
-    if (!contractData || !publicClient) {
-      return;
-    }
+    if (!contractData || !publicClient) return;
 
     let isCancelled = false;
     
     const fetchServices = async () => {
-      // Parse string IDs and convert back to BigInt
       const stringIds: string[] = JSON.parse(serviceIdsString);
       const ids = stringIds.map(id => BigInt(id));
       
       try {
         const srvcs: ServiceRequest[] = [];
         for (const id of ids) {
-          if (isCancelled) break; // Stop if component unmounted
+          if (isCancelled) break;
           
           try {
             const s: any = await contractData.read.getService([id]);
             
-            // Skip completed services
             if (s.completed) continue;
             
             const geocode = async (loc: string) => {
@@ -208,6 +191,10 @@ const MapComponent = () => {
               return undefined;
             };
             
+            // CRITICAL FIX: Read pendingAcceptor from contract
+            const pendingAddr = s.pendingAcceptor !== "0x0000000000000000000000000000000000000000" ? s.pendingAcceptor : undefined;
+            const acceptedAddr = s.acceptedBy !== "0x0000000000000000000000000000000000000000" ? s.acceptedBy : undefined;
+            
             srvcs.push({
               id: id.toString(),
               serviceId: id,
@@ -218,9 +205,13 @@ const MapComponent = () => {
               fromCoordinates: await geocode(s.startLocation),
               toCoordinates: await geocode(s.endLocation),
               requester: s.requester,
-              acceptedBy: s.acceptedBy !== "0x0000000000000000000000000000000000000000" ? s.acceptedBy : undefined,
+              pendingAcceptor: pendingAddr,
+              acceptedBy: acceptedAddr,
               completed: s.completed,
               nftTokenId: s.nftTokenId || undefined,
+              imageIpfsHash: s.imageIpfsHash || undefined,
+              completionImageHash: s.completionImageHash || undefined,
+              completionSubmitted: s.completionSubmitted || false, 
             });
             await new Promise(resolve => setTimeout(resolve, 200));
           } catch (err) {
@@ -241,25 +232,87 @@ const MapComponent = () => {
     return () => {
       isCancelled = true;
     };
-  }, [serviceIdsString, TOKEN]);
+  }, [serviceIdsString, TOKEN, contractData, publicClient]);
 
   const handleSubmit = async () => {
     if (!address || !serviceName || !toLoc) { notification.error("Fill all fields"); return; }
+
+    if (!imageIpfsHash || !imageUrl) {
+      notification.error("Please upload a service image");
+      return;
+    }
+
     const startLoc = useCurrentLoc ? "Current Location" : fromLoc;
     if (!startLoc.trim()) { notification.error("Specify start location"); return; }
     try {
       const amt = parseEther(flowAmount || "0");
       if (amt === 0n) { notification.error("Flow amount > 0"); return; }
       setLoading(true);
-      await writeContractAsync({ functionName: "createService", args: [serviceName, startLoc, toLoc], value: amt }, {
+      await writeContractAsync({ functionName: "createService", args: [serviceName, startLoc, toLoc, imageIpfsHash], value: amt }, {
         onBlockConfirmation: () => {
           notification.success("Service created!");
-          setServiceName(""); setFlowAmount(""); setFromLoc(""); setToLoc(""); setShowForm(false);
+          setServiceName(""); 
+          setFlowAmount(""); 
+          setFromLoc(""); 
+          setToLoc(""); 
+          setShowForm(false);
+          setImageIpfsHash("");
+          setImageUrl("");
         }
       });
     } catch (e: any) {
       notification.error(e?.message || "Failed");
     } finally { setLoading(false); }
+  };
+
+  const handleSubmitCompletionImage = async (serviceId: string) => {
+    if (!completionImageHash) {
+      notification.error("Please upload completion image first");
+      return;
+    }
+  
+    try {
+      setLoading(true);
+      await writeContractAsync(
+        {
+          functionName: "submitCompletionImage",
+          args: [BigInt(serviceId), completionImageHash],
+        },
+        {
+          onBlockConfirmation: () => {
+            notification.success("Completion image submitted! Waiting for requester verification.");
+            setCompletionImageHash("");
+            setCompletionImageUrl("");
+            setShowCompletionUpload(null);
+          },
+        },
+      );
+    } catch (e: any) {
+      notification.error(e?.message || "Failed to submit completion image");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerifyAndComplete = async (serviceId: string) => {
+    try {
+      setLoading(true);
+      await writeContractAsync(
+        {
+          functionName: "completeService",
+          args: [BigInt(serviceId)],
+        },
+        {
+          onBlockConfirmation: () => {
+            notification.success("Service verified and completed! Payment released.");
+          },
+        },
+      );
+    } catch (e: any) {
+      notification.error(e?.message || "Failed to complete service");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleAccept = async (srv: ServiceRequest) => {
@@ -273,104 +326,61 @@ const MapComponent = () => {
       return;
     }
 
-    console.log("=== ACCEPTING SERVICE ===");
-    console.log("Service ID:", srv.serviceId.toString());
-    console.log("Service Amount:", srv.flowAmount, "ETH");
-    console.log("User Address:", address);
-
     try {
       setLoading(true);
-      notification.info("Preparing transaction... Please wait");
+      notification.info("Requesting service acceptance...");
       
-      console.log("Calling acceptService with serviceId:", srv.serviceId);
-      
-      const tx = await writeContractAsync({ 
+      await writeContractAsync({ 
         functionName: "requestServiceAcceptance", 
         args: [srv.serviceId] 
       }, {
-        onBlockConfirmation: (txnReceipt: any) => {
-          console.log("✅ Transaction confirmed:", txnReceipt);
-          notification.success("🎉 Service accepted! NFT minted successfully!");
+        onBlockConfirmation: () => {
+          notification.success("🎉 Service acceptance requested! Waiting for requester approval...");
           
-          // Refresh service list to show NFT token ID
-          setSelected(srv);
-          
-          // Setup routing
           if (srv.fromCoordinates && srv.toCoordinates) {
             setRouteStart(srv.fromCoordinates);
             setDestination(srv.toCoordinates);
-            notification.info("Route displayed: Start → End location");
           } else if (srv.toCoordinates && userLocation) {
             setRouteStart(userLocation);
             setDestination(srv.toCoordinates);
-            notification.info("Route displayed: Your location → End location");
           }
         }
       });
       
-      console.log("Transaction sent:", tx);
-      notification.info("Transaction sent! Waiting for confirmation...");
-      
     } catch (e: any) {
-      console.error("❌ Accept service error:", e);
-      
-      // Detailed error handling
       if (e?.message?.includes("User rejected") || e?.message?.includes("user rejected")) {
         notification.warning("Transaction cancelled by user");
-      } else if (e?.message?.includes("insufficient funds")) {
-        notification.error("Insufficient funds for transaction");
-      } else if (e?.message?.includes("429") || e?.message?.includes("rate limit")) {
-        notification.error("Rate limit reached. Please wait and try again.");
       } else if (e?.shortMessage) {
         notification.error(`Error: ${e.shortMessage}`);
-      } else if (e?.message) {
-        notification.error(`Error: ${e.message.substring(0, 100)}`);
       } else {
-        notification.error("Failed to accept service. Check console for details.");
+        notification.error(e?.message || "Failed to request acceptance");
       }
     } finally { 
       setLoading(false); 
     }
   };
 
-  const handleComplete = async (srv: ServiceRequest) => {
+  const handleApproveAcceptance = async (srv: ServiceRequest) => {
     if (!srv.serviceId) {
       notification.error("Invalid service ID");
       return;
     }
-    
-    if (!srv.nftTokenId) {
-      notification.error("No NFT associated with this service");
-      return;
-    }
-
-    console.log("=== COMPLETING SERVICE ===");
-    console.log("Service ID:", srv.serviceId.toString());
-    console.log("NFT Token ID:", srv.nftTokenId.toString());
 
     try {
       setLoading(true);
-      notification.info("Completing service and burning NFT...");
+      notification.info("Approving service acceptance and minting NFT...");
       
       await writeContractAsync({ 
-        functionName: "completeService", 
+        functionName: "approveServiceAcceptance", 
         args: [srv.serviceId] 
       }, {
-        onBlockConfirmation: (txnReceipt: any) => {
-          console.log("✅ Service completed:", txnReceipt);
-          notification.success("🎉 Service completed! NFT burned and funds released!");
-          setSelected(null); 
-          setRouteStart(null); 
-          setDestination(null);
+        onBlockConfirmation: () => {
+          notification.success("✅ Service accepted! NFT minted and funds in escrow!");
         }
       });
+      
     } catch (e: any) {
-      console.error("❌ Complete service error:", e);
-      if (e?.shortMessage) {
-        notification.error(`Error: ${e.shortMessage}`);
-      } else {
-        notification.error(e?.message || "Failed to complete service");
-      }
+      notification.error(e?.shortMessage || e?.message || "Failed to approve acceptance");
     } finally { 
       setLoading(false); 
     }
@@ -378,14 +388,6 @@ const MapComponent = () => {
 
   if (!TOKEN || TOKEN === "your_mapbox_api_key_here") return <div className="flex items-center justify-center h-screen bg-gray-900 text-white">Set NEXT_PUBLIC_MAPBOX_API_KEY in .env.local</div>;
   if (!userLocation) return <div className="flex items-center justify-center h-screen bg-gray-900 text-white">Loading map...</div>;
-
-  // Debug info
-  console.log("=== MAP COMPONENT STATE ===");
-  console.log("User Address:", address);
-  console.log("Services Count:", services.length);
-  console.log("Contract Data:", contractData ? "Loaded" : "Not Loaded");
-  console.log("Is Mining:", isMining);
-  console.log("Loading:", loading);
 
   return (
     <div className="relative w-full h-screen">
@@ -436,91 +438,245 @@ const MapComponent = () => {
             <button onClick={() => setShowList(!showList)} className="w-full px-6 py-3 bg-purple-600 text-white rounded-lg shadow-lg hover:bg-purple-700">📋 Services ({services.length})</button>
           </div>
         ) : (
-          <div className="bg-gray-800 border border-gray-600 rounded-lg shadow-lg p-4">
+          <div className="bg-gray-800 border border-gray-600 rounded-lg shadow-lg p-4 max-h-[80vh] overflow-y-auto">
             <div className="flex justify-between mb-4"><h3 className="text-white font-medium">Create Service</h3><button onClick={() => setShowForm(false)} className="text-gray-400 hover:text-white">✕</button></div>
+            
             <input value={serviceName} onChange={e => setServiceName(e.target.value)} placeholder="Service name" className="w-full mb-3 px-3 py-2 bg-gray-700 text-white border border-gray-600 rounded" />
-            <input type="number" value={flowAmount} onChange={e => setFlowAmount(e.target.value)} placeholder="Flow amount" className="w-full mb-3 px-3 py-2 bg-gray-700 text-white border border-gray-600 rounded" />
-            <div className="mb-3"><label className="flex items-center gap-2 text-gray-300 text-sm"><input type="checkbox" checked={useCurrentLoc} onChange={e => setUseCurrentLoc(e.target.checked)} /> Use current location</label></div>
-            {!useCurrentLoc && <div className="relative mb-3"><input value={fromLoc} onChange={e => setFromLoc(e.target.value)} placeholder="From" className="w-full px-3 py-2 bg-gray-700 text-white border border-gray-600 rounded" />{fromSugg.length > 0 && <ul className="absolute top-full left-0 right-0 mt-1 bg-gray-700 border border-gray-600 rounded shadow-lg max-h-40 overflow-y-auto z-10">{fromSugg.map((s, i) => <li key={i} onClick={() => { setFromLoc(s.place_name); setFromSugg([]); }} className="px-3 py-2 cursor-pointer text-white hover:bg-gray-600">{s.place_name}</li>)}</ul>}</div>}
-            <div className="relative mb-4"><input value={toLoc} onChange={e => setToLoc(e.target.value)} placeholder="To" className="w-full px-3 py-2 bg-gray-700 text-white border border-gray-600 rounded" />{toSugg.length > 0 && <ul className="absolute top-full left-0 right-0 mt-1 bg-gray-700 border border-gray-600 rounded shadow-lg max-h-40 overflow-y-auto z-10">{toSugg.map((s, i) => <li key={i} onClick={() => { setToLoc(s.place_name); setToSugg([]); }} className="px-3 py-2 cursor-pointer text-white hover:bg-gray-600">{s.place_name}</li>)}</ul>}</div>
-            <button onClick={handleSubmit} disabled={loading} className="w-full px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:bg-gray-600">Submit</button>
+            <input type="number" step="0.001" value={flowAmount} onChange={e => setFlowAmount(e.target.value)} placeholder="Flow amount (ETH)" className="w-full mb-3 px-3 py-2 bg-gray-700 text-white border border-gray-600 rounded" />
+            
+            <ImageUpload 
+              onImageUploaded={handleImageUpload}
+              currentImage={imageUrl}
+            />
+
+            <div className="mb-3 mt-3"><label className="flex items-center gap-2 text-gray-300 text-sm"><input type="checkbox" checked={useCurrentLoc} onChange={e => setUseCurrentLoc(e.target.checked)} /> Use current location</label></div>
+            {!useCurrentLoc && <div className="relative mb-3"><input value={fromLoc} onChange={e => setFromLoc(e.target.value)} placeholder="From location" className="w-full px-3 py-2 bg-gray-700 text-white border border-gray-600 rounded" />{fromSugg.length > 0 && <ul className="absolute top-full left-0 right-0 mt-1 bg-gray-700 border border-gray-600 rounded shadow-lg max-h-40 overflow-y-auto z-10">{fromSugg.map((s, i) => <li key={i} onClick={() => { setFromLoc(s.place_name); setFromSugg([]); }} className="px-3 py-2 cursor-pointer text-white hover:bg-gray-600">{s.place_name}</li>)}</ul>}</div>}
+            <div className="relative mb-4"><input value={toLoc} onChange={e => setToLoc(e.target.value)} placeholder="To location" className="w-full px-3 py-2 bg-gray-700 text-white border border-gray-600 rounded" />{toSugg.length > 0 && <ul className="absolute top-full left-0 right-0 mt-1 bg-gray-700 border border-gray-600 rounded shadow-lg max-h-40 overflow-y-auto z-10">{toSugg.map((s, i) => <li key={i} onClick={() => { setToLoc(s.place_name); setToSugg([]); }} className="px-3 py-2 cursor-pointer text-white hover:bg-gray-600">{s.place_name}</li>)}</ul>}</div>
+            <button onClick={handleSubmit} disabled={loading || !imageIpfsHash} className="w-full px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed">
+              {loading ? "Creating..." : "Create Service Request"}
+            </button>
           </div>
         )}
       </div>
 
       {showList && (
-        <div className="absolute top-44 left-4 z-[1000] w-96 bg-gray-800 border border-gray-600 rounded-lg shadow-lg p-4 max-h-96 overflow-y-auto">
-          <div className="flex justify-between mb-4"><h3 className="text-white font-medium">Services ({services.length})</h3><button onClick={() => setShowList(false)} className="text-gray-400 hover:text-white">✕</button></div>
-          {services.length === 0 ? <p className="text-gray-400 text-sm">No services</p> : services.map(s => (
-            <div key={s.id} className="bg-gray-700 p-3 rounded mb-3 border border-gray-600">
-              <h4 className="text-white font-medium text-sm">{s.serviceName}</h4>
-              <p className="text-gray-300 text-xs">💰 {s.flowAmount} Flow</p>
-              <p className="text-gray-300 text-xs">📍 {s.fromLocation} → {s.toLocation}</p>
-              {s.nftTokenId && <p className="text-purple-400 text-xs">🎨 NFT #{s.nftTokenId.toString()} (Escrow Active)</p>}
-              
-              {/* Show Route Button */}
-              {(s.fromCoordinates || s.toCoordinates) && (
-                <button 
-                  onClick={() => {
-                    setSelected(s);
-                    if (s.fromCoordinates && s.toCoordinates) {
-                      setRouteStart(s.fromCoordinates);
-                      setDestination(s.toCoordinates);
-                      notification.info("Route displayed on map");
-                    } else if (s.toCoordinates && userLocation) {
-                      setRouteStart(userLocation);
-                      setDestination(s.toCoordinates);
-                      notification.info("Route displayed on map");
-                    }
-                  }}
-                  className="mt-2 w-full px-3 py-1 bg-indigo-600 text-white text-xs rounded hover:bg-indigo-700"
-                >
-                  🗺️ Show Route
-                </button>
-              )}
-              
-              {s.acceptedBy ? (
-                <div className="mt-2">
-                  <p className="text-green-500 text-xs">✓ Accepted by {s.acceptedBy.slice(0, 6)}...{s.acceptedBy.slice(-4)}</p>
-                  {s.requester === address && (
-                    <button 
-                      onClick={() => handleComplete(s)} 
-                      disabled={loading || isMining} 
-                      className="mt-2 w-full px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 disabled:opacity-50"
-                    >
-                      {loading || isMining ? "Processing..." : "✅ Complete & Burn NFT"}
-                    </button>
+        <div className="absolute top-44 left-4 z-[1000] w-96 bg-gray-800 border border-gray-600 rounded-lg shadow-lg p-4 max-h-[70vh] overflow-y-auto">
+          <div className="flex justify-between mb-4">
+            <h3 className="text-white font-medium">Active Services ({services.length})</h3>
+            <button onClick={() => setShowList(false)} className="text-gray-400 hover:text-white">✕</button>
+          </div>
+          {services.length === 0 ? (
+            <p className="text-gray-400 text-sm text-center py-4">No active services</p>
+          ) : (
+            services.map(s => (
+              <div key={s.id} className="bg-gray-700 p-3 rounded mb-3 border border-gray-600">
+                <h4 className="text-white font-medium text-sm mb-2">{s.serviceName}</h4>
+                
+                {/* Service Request Image */}
+                {s.imageIpfsHash && (
+                  <div className="my-2">
+                    <img 
+                      src={`https://ipfs.thirdwebcdn.com/ipfs/${s.imageIpfsHash}`}
+                      alt="Service request"
+                      className="w-full h-32 object-cover rounded border border-gray-500"
+                      onError={(e) => {
+                        e.currentTarget.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Crect fill='%23374151' width='100' height='100'/%3E%3Ctext fill='%239CA3AF' font-family='sans-serif' font-size='14' x='50%25' y='50%25' text-anchor='middle' dominant-baseline='middle'%3EImage Loading...%3C/text%3E%3C/svg%3E";
+                      }}
+                    />
+                    <p className="text-xs text-gray-400 mt-1">📸 Service Request Photo</p>
+                  </div>
+                )}
+                
+                <div className="space-y-1 mb-2">
+                  <p className="text-gray-300 text-xs">💰 {s.flowAmount} ETH</p>
+                  <p className="text-gray-300 text-xs">📍 {s.fromLocation} → {s.toLocation}</p>
+                  <p className="text-gray-400 text-xs">👤 Requester: {s.requester?.slice(0, 6)}...{s.requester?.slice(-4)}</p>
+                  {s.nftTokenId && (
+                    <p className="text-purple-400 text-xs font-medium">🎨 NFT #{s.nftTokenId.toString()} (Escrow Active)</p>
                   )}
                 </div>
-              ) : (
-                <button 
-                  onClick={() => handleAccept(s)} 
-                  disabled={loading || isMining || s.requester === address} 
-                  className="mt-2 w-full px-3 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700 disabled:opacity-50"
-                >
-                  {loading || isMining ? "Processing..." : "Accept & Mint NFT"}
-                </button>
-              )}
-            </div>
-          ))}
+                
+                {/* Show Route Button */}
+                {(s.fromCoordinates || s.toCoordinates) && (
+                  <button 
+                    onClick={() => {
+                      setSelected(s);
+                      if (s.fromCoordinates && s.toCoordinates) {
+                        setRouteStart(s.fromCoordinates);
+                        setDestination(s.toCoordinates);
+                      } else if (s.toCoordinates && userLocation) {
+                        setRouteStart(userLocation);
+                        setDestination(s.toCoordinates);
+                      }
+                      notification.info("📍 Route displayed on map");
+                    }}
+                    className="mt-2 w-full px-3 py-2 bg-indigo-600 text-white text-xs rounded hover:bg-indigo-700 font-medium"
+                  >
+                    🗺️ Show Route on Map
+                  </button>
+                )}
+                
+                {/* REQUESTER: Approve pending acceptance */}
+                {s.requester === address && s.pendingAcceptor && !s.acceptedBy && (
+                  <div className="mt-2 bg-yellow-900 bg-opacity-50 border border-yellow-600 rounded p-3">
+                    <p className="text-xs text-yellow-200 mb-2 font-medium">
+                      ⏳ Acceptance requested by:
+                    </p>
+                    <p className="text-xs text-yellow-100 mb-2 font-mono">
+                      {s.pendingAcceptor.slice(0, 10)}...{s.pendingAcceptor.slice(-8)}
+                    </p>
+                    <button
+                      onClick={() => handleApproveAcceptance(s)}
+                      disabled={loading || isMining}
+                      className="w-full px-3 py-2 bg-green-600 text-white text-xs rounded hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                    >
+                      {loading || isMining ? "Processing..." : "✅ Approve & Mint NFT"}
+                    </button>
+                  </div>
+                )}
+                
+                {/* SERVICE PROVIDER: Upload completion photo */}
+                {s.acceptedBy === address && !s.completionSubmitted && !s.completed && (
+                  <div className="mt-2">
+                    {showCompletionUpload === s.id ? (
+                      <div className="bg-gray-800 p-3 rounded border border-blue-500">
+                        <p className="text-sm text-white mb-2 font-medium">📸 Upload Completion Proof:</p>
+                        <ImageUpload 
+                          onImageUploaded={handleCompletionImageUpload}
+                          currentImage={completionImageUrl}
+                        />
+                        <div className="flex gap-2 mt-3">
+                          <button
+                            onClick={() => handleSubmitCompletionImage(s.id)}
+                            disabled={!completionImageHash || loading || isMining}
+                            className="flex-1 px-3 py-2 bg-green-600 text-white text-xs rounded hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed font-medium"
+                          >
+                            {loading || isMining ? "Submitting..." : "✓ Submit Proof"}
+                          </button>
+                          <button
+                            onClick={() => {
+                              setShowCompletionUpload(null);
+                              setCompletionImageHash("");
+                              setCompletionImageUrl("");
+                            }}
+                            className="px-3 py-2 bg-gray-600 text-white text-xs rounded hover:bg-gray-500"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => setShowCompletionUpload(s.id)}
+                        className="w-full px-3 py-2 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 font-medium"
+                      >
+                        📸 Upload Completion Photo
+                      </button>
+                    )}
+                  </div>
+                )}
+                
+                {/* Waiting for verification status */}
+                {s.acceptedBy === address && s.completionSubmitted && !s.completed && (
+                  <div className="mt-2 p-2 bg-yellow-900 bg-opacity-30 border border-yellow-700 rounded">
+                    <p className="text-xs text-yellow-300 text-center">⏳ Waiting for requester to verify completion</p>
+                  </div>
+                )}
+                
+                {/* REQUESTER: Verify completion and release payment */}
+                {s.requester === address && s.completionSubmitted && !s.completed && s.completionImageHash && (
+                  <div className="mt-2 bg-green-900 bg-opacity-30 p-3 rounded border-2 border-green-600">
+                    <p className="text-sm text-white mb-2 font-medium">✅ Completion Proof Received!</p>
+                    <img 
+                      src={`https://ipfs.thirdwebcdn.com/ipfs/${s.completionImageHash}`}
+                      alt="Completion proof"
+                      className="w-full h-32 object-cover rounded mb-3 border border-green-500"
+                      onError={(e) => {
+                        e.currentTarget.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Crect fill='%23374151' width='100' height='100'/%3E%3Ctext fill='%239CA3AF' font-family='sans-serif' font-size='14' x='50%25' y='50%25' text-anchor='middle' dominant-baseline='middle'%3EImage Loading...%3C/text%3E%3C/svg%3E";
+                      }}
+                    />
+                    <button
+                      onClick={() => handleVerifyAndComplete(s.id)}
+                      disabled={loading || isMining}
+                      className="w-full px-3 py-2 bg-green-600 text-white text-sm rounded hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed font-bold shadow-lg"
+                    >
+                      {loading || isMining ? "Processing..." : "✓ Verify & Release " + s.flowAmount + " ETH"}
+                    </button>
+                    <p className="text-xs text-green-200 mt-2 text-center">
+                      Review the completion photo above. Clicking verify will burn the NFT and release payment to the service provider.
+                    </p>
+                  </div>
+                )}
+                
+                {/* Accept button for non-accepted services */}
+                {!s.acceptedBy && !s.pendingAcceptor && s.requester !== address && (
+                  <button 
+                    onClick={() => handleAccept(s)} 
+                    disabled={loading || isMining} 
+                    className="mt-2 w-full px-3 py-2 bg-green-600 text-white text-sm rounded hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                  >
+                    {loading || isMining ? "Processing..." : "🤝 Request to Accept Service"}
+                  </button>
+                )}
+                
+                {/* Show accepted status for others */}
+                {s.acceptedBy && s.acceptedBy !== address && s.requester !== address && (
+                  <div className="mt-2 p-2 bg-green-900 bg-opacity-30 border border-green-700 rounded">
+                    <p className="text-green-400 text-xs text-center">✓ Service accepted by {s.acceptedBy.slice(0, 6)}...{s.acceptedBy.slice(-4)}</p>
+                  </div>
+                )}
+                
+                {/* Show when you've accepted */}
+                {s.acceptedBy === address && !s.completionSubmitted && (
+                  <div className="mt-2 p-2 bg-blue-900 bg-opacity-30 border border-blue-700 rounded">
+                    <p className="text-blue-300 text-xs text-center">✓ You accepted this service. Upload completion proof when done.</p>
+                  </div>
+                )}
+              </div>
+            ))
+          )}
         </div>
       )}
 
       <MapContainer center={userLocation} zoom={13} style={{ height: "100%", width: "100%" }}>
         <TileLayer url={`https://api.mapbox.com/styles/v1/mapbox/streets-v11/tiles/{z}/{x}/{y}?access_token=${TOKEN}`} />
-        <Marker position={userLocation}><Popup>You are here</Popup></Marker>
-        {destination && <Marker position={destination}><Popup>Destination</Popup></Marker>}
+        <Marker position={userLocation}><Popup>📍 You are here</Popup></Marker>
+        {destination && <Marker position={destination}><Popup>🎯 Destination</Popup></Marker>}
         {services.map(s => {
           const markers = [];
-          if (s.fromCoordinates) markers.push(<Marker key={`${s.id}-from`} position={s.fromCoordinates} icon={createOrangeMarkerIcon(s.serviceName)}><Popup><div className="text-sm"><h4 className="font-medium">{s.serviceName}</h4><p>💰 {s.flowAmount} Flow</p><p>{s.fromLocation} → {s.toLocation}</p></div></Popup></Marker>);
-          if (s.toCoordinates) markers.push(<Marker key={`${s.id}-to`} position={s.toCoordinates} icon={createOrangeMarkerIcon(`${s.serviceName} (End)`)}><Popup><div className="text-sm"><h4>{s.serviceName} - End</h4></div></Popup></Marker>);
+          if (s.fromCoordinates) markers.push(
+            <Marker 
+              key={`${s.id}-from`} 
+              position={s.fromCoordinates} 
+              icon={createOrangeMarkerIcon(s.serviceName)}
+            >
+              <Popup>
+                <div className="text-sm">
+                  <h4 className="font-medium">{s.serviceName}</h4>
+                  <p>💰 {s.flowAmount} ETH</p>
+                  <p>📍 Start: {s.fromLocation}</p>
+                </div>
+              </Popup>
+            </Marker>
+          );
+          if (s.toCoordinates) markers.push(
+            <Marker 
+              key={`${s.id}-to`} 
+              position={s.toCoordinates} 
+              icon={createOrangeMarkerIcon(`${s.serviceName} (End)`)}
+            >
+              <Popup>
+                <div className="text-sm">
+                  <h4 className="font-medium">{s.serviceName} - End</h4>
+                  <p>🎯 Destination: {s.toLocation}</p>
+                </div>
+              </Popup>
+            </Marker>
+          );
           return markers;
         })}
         {routeStart && destination && (
-          <>
-            {console.log("Rendering Routing component with:", { routeStart, destination, token: TOKEN ? "Present" : "Missing" })}
-            <Routing userLocation={routeStart} destination={destination} token={TOKEN} />
-          </>
+          <Routing userLocation={routeStart} destination={destination} token={TOKEN} />
         )}
         <FlyToUserLocation userLocation={userLocation} />
       </MapContainer>
@@ -529,13 +685,12 @@ const MapComponent = () => {
       {(routeStart || destination) && (
         <button
           onClick={() => {
-            console.log("Clearing route...");
             setRouteStart(null);
             setDestination(null);
             setSelected(null);
-            notification.info("Route cleared");
+            notification.info("Route cleared from map");
           }}
-          className="absolute bottom-4 left-4 z-[1000] px-4 py-2 bg-red-600 text-white rounded-lg shadow-lg hover:bg-red-700"
+          className="absolute bottom-4 left-4 z-[1000] px-4 py-2 bg-red-600 text-white rounded-lg shadow-lg hover:bg-red-700 font-medium"
         >
           🗑️ Clear Route
         </button>

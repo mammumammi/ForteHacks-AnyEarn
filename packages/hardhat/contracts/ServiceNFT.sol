@@ -1,168 +1,194 @@
-//SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT
 pragma solidity >=0.8.0 <0.9.0;
 
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
-import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "hardhat/console.sol";
 
 /**
- * ServiceNFT - NFT Escrow Contract for Service Requests
- * When a service is accepted, an NFT is minted representing the partnership
- * The NFT holds the escrow funds and is burnt upon completion
+ * @title ServiceNFT
+ * @dev NFT contract that holds funds in escrow until service completion
+ * When NFT is minted, funds are locked. When burned, funds are released.
  */
-contract ServiceNFT is ERC721URIStorage, Ownable {
+contract ServiceNFT is ERC721, Ownable {
     uint256 private _tokenIdCounter;
     
-    struct ServiceNFTData {
+    struct NFTData {
         uint256 serviceId;
         address requester;
         address acceptor;
         uint256 escrowAmount;
         bool completed;
-        uint256 createdAt;
     }
     
-    // Mapping from token ID to service NFT data
-    mapping(uint256 => ServiceNFTData) public serviceNFTs;
+    mapping(uint256 => NFTData) public nftData;
+    mapping(uint256 => uint256) public serviceToTokenId;
     
-    // Mapping from service ID to token ID
-    mapping(uint256 => uint256) public serviceToToken;
+    address public serviceContract;
     
-    // Events
-    event ServiceNFTMinted(
-        uint256 indexed tokenId,
-        uint256 indexed serviceId,
-        address indexed requester,
-        address acceptor,
-        uint256 escrowAmount
-    );
-    
-    event ServiceNFTCompleted(
-        uint256 indexed tokenId,
-        uint256 indexed serviceId,
-        address indexed acceptor,
-        uint256 amount
-    );
-    
+    event NFTMinted(uint256 indexed tokenId, uint256 indexed serviceId, address requester, address acceptor, uint256 amount);
+    event NFTBurned(uint256 indexed tokenId, uint256 indexed serviceId, address acceptor, uint256 amount);
+    event EscrowReleased(uint256 indexed tokenId, address indexed recipient, uint256 amount);
+
     constructor() ERC721("ServiceNFT", "SNFT") Ownable(msg.sender) {
-        _tokenIdCounter = 0;
+        console.log("ServiceNFT deployed by:", msg.sender);
     }
-    
+
     /**
-     * Mint a service NFT when service is accepted
-     * The NFT is jointly owned (approved for both parties)
-     * @param _serviceId - Service ID from ServiceContract
-     * @param _requester - Address of service requester
-     * @param _acceptor - Address of service acceptor
+     * @dev Set the authorized ServiceContract address
+     * CRITICAL: Must be called after ServiceContract deployment
+     */
+    function setServiceContract(address _serviceContract) external onlyOwner {
+        require(_serviceContract != address(0), "Invalid address");
+        serviceContract = _serviceContract;
+        console.log("ServiceContract set to:", _serviceContract);
+    }
+
+    modifier onlyServiceContract() {
+        require(msg.sender == serviceContract, "Only ServiceContract can call this");
+        _;
+    }
+
+    /**
+     * @dev Mint NFT and lock funds in escrow
+     * Called by ServiceContract when service is accepted
      */
     function mintServiceNFT(
         uint256 _serviceId,
         address _requester,
         address _acceptor
-    ) public payable returns (uint256) {
-        require(msg.value > 0, "Escrow amount must be greater than 0");
-        require(_requester != address(0), "Invalid requester address");
-        require(_acceptor != address(0), "Invalid acceptor address");
-        require(serviceToToken[_serviceId] == 0, "NFT already exists for this service");
-        
+    ) external payable onlyServiceContract returns (uint256) {
+        require(msg.value > 0, "No funds sent");
+        require(_requester != address(0), "Invalid requester");
+        require(_acceptor != address(0), "Invalid acceptor");
+        require(serviceToTokenId[_serviceId] == 0, "NFT already minted for this service");
+
         _tokenIdCounter++;
         uint256 newTokenId = _tokenIdCounter;
-        
-        // Mint NFT to requester (but give approval to acceptor)
-        _safeMint(_requester, newTokenId);
-        
-        // Grant approval to acceptor
-        approve(_acceptor, newTokenId);
-        
-        // Store service NFT data
-        serviceNFTs[newTokenId] = ServiceNFTData({
+
+        // Mint NFT to acceptor (service provider)
+        _safeMint(_acceptor, newTokenId);
+
+        // Store NFT data
+        nftData[newTokenId] = NFTData({
             serviceId: _serviceId,
             requester: _requester,
             acceptor: _acceptor,
             escrowAmount: msg.value,
-            completed: false,
-            createdAt: block.timestamp
+            completed: false
         });
-        
-        serviceToToken[_serviceId] = newTokenId;
-        
-        // Set token URI (you can customize this)
-        string memory uri = string(abi.encodePacked(
-            "data:application/json;base64,",
-            _generateTokenURI(_serviceId, msg.value)
-        ));
-        _setTokenURI(newTokenId, uri);
-        
-        console.log("Service NFT minted:", newTokenId);
+
+        // Map service ID to token ID
+        serviceToTokenId[_serviceId] = newTokenId;
+
+        console.log("NFT minted - Token ID:", newTokenId);
         console.log("Service ID:", _serviceId);
         console.log("Escrow amount:", msg.value);
-        
-        emit ServiceNFTMinted(newTokenId, _serviceId, _requester, _acceptor, msg.value);
-        
+        console.log("Acceptor:", _acceptor);
+
+        emit NFTMinted(newTokenId, _serviceId, _requester, _acceptor, msg.value);
+
         return newTokenId;
     }
-    
+
     /**
-     * Complete service and burn NFT, transferring funds to acceptor
-     * Can only be called by the requester
-     * @param _tokenId - Token ID of the service NFT
+     * @dev Complete service, burn NFT, and release funds to acceptor
+     * Called by ServiceContract when requester verifies completion
      */
-    function completeServiceAndBurn(uint256 _tokenId) public {
+    function completeServiceAndBurn(uint256 _tokenId) external onlyServiceContract {
         require(_tokenId > 0 && _tokenId <= _tokenIdCounter, "Invalid token ID");
-        ServiceNFTData storage nftData = serviceNFTs[_tokenId];
-        require(nftData.requester == msg.sender, "Only requester can complete");
-        require(!nftData.completed, "Service already completed");
-        require(nftData.escrowAmount > 0, "No escrow funds");
+        require(_ownerOf(_tokenId) != address(0), "Token does not exist");
         
+        NFTData storage data = nftData[_tokenId];
+        require(!data.completed, "Service already completed");
+        require(data.escrowAmount > 0, "No funds in escrow");
+
+        address acceptor = data.acceptor;
+        uint256 amount = data.escrowAmount;
+        uint256 serviceId = data.serviceId;
+
         // Mark as completed
-        nftData.completed = true;
-        
-        // Transfer escrow to acceptor
-        uint256 amount = nftData.escrowAmount;
-        address acceptor = nftData.acceptor;
-        
+        data.completed = true;
+
         // Burn the NFT
         _burn(_tokenId);
-        
-        // Transfer funds
+
+        // Release funds to acceptor (service provider)
         (bool success, ) = acceptor.call{value: amount}("");
-        require(success, "Transfer failed");
-        
-        console.log("Service NFT burned:", _tokenId);
-        console.log("Funds transferred to:", acceptor);
+        require(success, "Fund transfer failed");
+
+        console.log("NFT burned - Token ID:", _tokenId);
+        console.log("Funds released to:", acceptor);
         console.log("Amount:", amount);
-        
-        emit ServiceNFTCompleted(_tokenId, nftData.serviceId, acceptor, amount);
+
+        emit NFTBurned(_tokenId, serviceId, acceptor, amount);
+        emit EscrowReleased(_tokenId, acceptor, amount);
     }
-    
+
     /**
-     * Get service NFT data
-     * @param _tokenId - Token ID
+     * @dev Get token ID for a service
      */
-    function getServiceNFT(uint256 _tokenId) public view returns (ServiceNFTData memory) {
+    function getTokenIdForService(uint256 _serviceId) external view returns (uint256) {
+        return serviceToTokenId[_serviceId];
+    }
+
+    /**
+     * @dev Get NFT data for a token
+     */
+    function getNFTData(uint256 _tokenId) external view returns (NFTData memory) {
         require(_tokenId > 0 && _tokenId <= _tokenIdCounter, "Invalid token ID");
-        return serviceNFTs[_tokenId];
+        return nftData[_tokenId];
     }
-    
+
     /**
-     * Get token ID for a service
-     * @param _serviceId - Service ID
+     * @dev Get current token counter
      */
-    function getTokenIdForService(uint256 _serviceId) public view returns (uint256) {
-        return serviceToToken[_serviceId];
+    function getTokenCounter() external view returns (uint256) {
+        return _tokenIdCounter;
     }
-    
+
     /**
-     * Generate base64 encoded token URI
+     * @dev Override to prevent transfers while service is active
      */
-    function _generateTokenURI(uint256 _serviceId, uint256 _amount) private pure returns (string memory) {
-        // Simple JSON metadata (you can enhance this)
-        return "eyJuYW1lIjogIlNlcnZpY2UgTkZUIiwgImRlc2NyaXB0aW9uIjogIkVzY3JvdyBORlQgZm9yIHNlcnZpY2UgcmVxdWVzdCIsICJhdHRyaWJ1dGVzIjogW119";
+    function _update(address to, uint256 tokenId, address auth) internal virtual override returns (address) {
+        address from = _ownerOf(tokenId);
+        
+        // Allow minting (from == address(0))
+        if (from == address(0)) {
+            return super._update(to, tokenId, auth);
+        }
+        
+        // Allow burning (to == address(0))
+        if (to == address(0)) {
+            return super._update(to, tokenId, auth);
+        }
+        
+        // Prevent transfers while service is active
+        revert("ServiceNFT: Cannot transfer active service NFT");
     }
-    
+
     /**
-     * Allow contract to receive ETH
+     * @dev Allow contract to receive ETH
      */
-    receive() external payable {}
+    receive() external payable {
+        console.log("ServiceNFT received:", msg.value);
+    }
+
+    /**
+     * @dev Emergency withdraw (only owner, only if no active services)
+     */
+    function emergencyWithdraw() external onlyOwner {
+        uint256 balance = address(this).balance;
+        require(balance > 0, "No funds to withdraw");
+        
+        // Check no active NFTs
+        for (uint256 i = 1; i <= _tokenIdCounter; i++) {
+            if (_ownerOf(i) != address(0)) {
+                revert("Cannot withdraw with active NFTs");
+            }
+        }
+        
+        (bool success, ) = owner().call{value: balance}("");
+        require(success, "Withdrawal failed");
+    }
 }
