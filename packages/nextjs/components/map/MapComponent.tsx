@@ -12,6 +12,7 @@ import { notification } from "~~/utils/scaffold-eth";
 import { Address } from "~~/components/scaffold-eth";
 import { usePublicClient } from "wagmi";
 import { ImageUpload } from "../ImageUpload";
+import { MediaRenderer } from "thirdweb/react";
 
 const createOrangeMarkerIcon = (name: string) => L.divIcon({
   className: 'custom-orange-marker',
@@ -476,14 +477,34 @@ const MapComponent = () => {
                 {s.imageIpfsHash && (
                   <div className="my-2">
                     <img 
-                      src={`https://ipfs.thirdwebcdn.com/ipfs/${s.imageIpfsHash}`}
+                      src={`https://ipfs.io/ipfs/${s.imageIpfsHash}`}
                       alt="Service request"
                       className="w-full h-32 object-cover rounded border border-gray-500"
+                      loading="lazy"
                       onError={(e) => {
-                        e.currentTarget.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Crect fill='%23374151' width='100' height='100'/%3E%3Ctext fill='%239CA3AF' font-family='sans-serif' font-size='14' x='50%25' y='50%25' text-anchor='middle' dominant-baseline='middle'%3EImage Loading...%3C/text%3E%3C/svg%3E";
+                        // Try alternative gateways if first fails
+                        const currentSrc = e.currentTarget.src;
+                        if (currentSrc.includes('ipfs.io')) {
+                          e.currentTarget.src = `https://gateway.pinata.cloud/ipfs/${s.imageIpfsHash}`;
+                        } else if (currentSrc.includes('pinata')) {
+                          e.currentTarget.src = `https://cloudflare-ipfs.com/ipfs/${s.imageIpfsHash}`;
+                        } else if (currentSrc.includes('cloudflare')) {
+                          e.currentTarget.src = `https://ipfs.thirdwebcdn.com/ipfs/${s.imageIpfsHash}`;
+                        } else {
+                          // Final fallback to placeholder
+                          e.currentTarget.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Crect fill='%23374151' width='100' height='100'/%3E%3Ctext fill='%239CA3AF' font-family='sans-serif' font-size='10' x='50%25' y='50%25' text-anchor='middle' dominant-baseline='middle'%3EImage Unavailable%3C/text%3E%3C/svg%3E";
+                        }
                       }}
                     />
                     <p className="text-xs text-gray-400 mt-1">📸 Service Request Photo</p>
+                    <a 
+                      href={`https://ipfs.io/ipfs/${s.imageIpfsHash}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-blue-400 hover:text-blue-300 underline"
+                    >
+                      View on IPFS
+                    </a>
                   </div>
                 )}
                 
@@ -588,13 +609,32 @@ const MapComponent = () => {
                   <div className="mt-2 bg-green-900 bg-opacity-30 p-3 rounded border-2 border-green-600">
                     <p className="text-sm text-white mb-2 font-medium">✅ Completion Proof Received!</p>
                     <img 
-                      src={`https://ipfs.thirdwebcdn.com/ipfs/${s.completionImageHash}`}
+                      src={`https://ipfs.io/ipfs/${s.completionImageHash}`}
                       alt="Completion proof"
                       className="w-full h-32 object-cover rounded mb-3 border border-green-500"
+                      loading="lazy"
                       onError={(e) => {
-                        e.currentTarget.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Crect fill='%23374151' width='100' height='100'/%3E%3Ctext fill='%239CA3AF' font-family='sans-serif' font-size='14' x='50%25' y='50%25' text-anchor='middle' dominant-baseline='middle'%3EImage Loading...%3C/text%3E%3C/svg%3E";
+                        // Try alternative gateways if first fails
+                        const currentSrc = e.currentTarget.src;
+                        if (currentSrc.includes('ipfs.io')) {
+                          e.currentTarget.src = `https://gateway.pinata.cloud/ipfs/${s.completionImageHash}`;
+                        } else if (currentSrc.includes('pinata')) {
+                          e.currentTarget.src = `https://cloudflare-ipfs.com/ipfs/${s.completionImageHash}`;
+                        } else if (currentSrc.includes('cloudflare')) {
+                          e.currentTarget.src = `https://ipfs.thirdwebcdn.com/ipfs/${s.completionImageHash}`;
+                        } else {
+                          e.currentTarget.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Crect fill='%23374151' width='100' height='100'/%3E%3Ctext fill='%239CA3AF' font-family='sans-serif' font-size='10' x='50%25' y='50%25' text-anchor='middle' dominant-baseline='middle'%3EImage Unavailable%3C/text%3E%3C/svg%3E";
+                        }
                       }}
                     />
+                    <a 
+                      href={`https://ipfs.io/ipfs/${s.completionImageHash}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-green-300 hover:text-green-200 underline block mb-3"
+                    >
+                      View full image on IPFS
+                    </a>
                     <button
                       onClick={() => handleVerifyAndComplete(s.id)}
                       disabled={loading || isMining}
