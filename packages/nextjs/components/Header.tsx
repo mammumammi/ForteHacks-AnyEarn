@@ -34,7 +34,7 @@ export const HeaderMenuLinks = () => {
     <>
       {menuLinks.map(({ label, href, icon }) => {
         const isActive = pathname === href;
-        return (
+        return (<div className="hidden fixed">
           <li key={href}>
             <Link
               href={href}
@@ -47,7 +47,7 @@ export const HeaderMenuLinks = () => {
               <span>{label}</span>
             </Link>
           </li>
-        );
+          </ div>);
       })}
     </>
   );
@@ -66,7 +66,7 @@ export const Header = () => {
   });
 
   return (
-    <div className="sticky lg:static top-0 navbar bg-base-100 min-h-0 shrink-0 justify-between z-20 shadow-md shadow-secondary px-0 sm:px-2">
+    <div className="sticky hidden fixed lg:static top-0 navbar bg-base-100 min-h-0 shrink-0 justify-between z-20 shadow-md shadow-secondary px-0 sm:px-2">
       <div className="navbar-start w-auto lg:w-1/2">
         <details className="dropdown" ref={burgerMenuRef}>
           <summary className="ml-1 btn btn-ghost lg:hidden hover:bg-transparent">

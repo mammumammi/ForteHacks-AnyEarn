@@ -415,9 +415,9 @@ const MapComponent = () => {
                     disconnect();
                     notification.success("Wallet disconnected");
                   }}
-                  className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors shadow-lg"
+                  className="px-4 py-2 w-[100px] h-[60px] bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors shadow-lg"
                 >
-                  🔌 Disconnect Wallet
+                  Disconnect Wallet
                 </button>
               </>
             ) : (
@@ -434,16 +434,16 @@ const MapComponent = () => {
 
       <div className="absolute top-16 left-4 z-[1000] w-96">
         {!showForm ? (
-          <div className="space-y-2">
-            <button onClick={() => setShowForm(true)} className="w-full px-6 py-3 bg-blue-600 text-white rounded-lg shadow-lg hover:bg-blue-700">🚀 Create Service</button>
-            <button onClick={() => setShowList(!showList)} className="w-full px-6 py-3 bg-purple-600 text-white rounded-lg shadow-lg hover:bg-purple-700">📋 Services ({services.length})</button>
+          <div className="space-y-5 mt-10">
+            <button onClick={() => setShowForm(true)} className="w-[250px] px-6 py-3 bg-black text-white rounded-lg shadow-lg hover:bg-white hover:text-black"> Create Service</button>
+            <button onClick={() => setShowList(!showList)} className="w-[250px] px-6 py-3 bg-purple-950 text-white rounded-lg shadow-lg hover:bg-purple-700">Services ({services.length})</button>
           </div>
         ) : (
-          <div className="bg-gray-800 border border-gray-600 rounded-lg shadow-lg p-4 max-h-[80vh] overflow-y-auto">
+          <div className="bg-[#02010a] border border-gray-600 rounded-lg shadow-lg p-4 max-h-[80vh] mt-8 overflow-y-auto">
             <div className="flex justify-between mb-4"><h3 className="text-white font-medium">Create Service</h3><button onClick={() => setShowForm(false)} className="text-gray-400 hover:text-white">✕</button></div>
             
-            <input value={serviceName} onChange={e => setServiceName(e.target.value)} placeholder="Service name" className="w-full mb-3 px-3 py-2 bg-gray-700 text-white border border-gray-600 rounded" />
-            <input type="number" step="0.001" value={flowAmount} onChange={e => setFlowAmount(e.target.value)} placeholder="Flow amount (ETH)" className="w-full mb-3 px-3 py-2 bg-gray-700 text-white border border-gray-600 rounded" />
+            <input value={serviceName} onChange={e => setServiceName(e.target.value)} placeholder="Service name" className="w-full mb-3 px-3 py-2 bg-[#04052e] text-white border border-gray-600 rounded" />
+            <input type="number" step="0.001" value={flowAmount} onChange={e => setFlowAmount(e.target.value)} placeholder="Flow amount " className="w-full mb-3 px-3 py-2 bg-[#04052e] text-white border border-gray-600 rounded" />
             
             <ImageUpload 
               onImageUploaded={handleImageUpload}
@@ -451,8 +451,8 @@ const MapComponent = () => {
             />
 
             <div className="mb-3 mt-3"><label className="flex items-center gap-2 text-gray-300 text-sm"><input type="checkbox" checked={useCurrentLoc} onChange={e => setUseCurrentLoc(e.target.checked)} /> Use current location</label></div>
-            {!useCurrentLoc && <div className="relative mb-3"><input value={fromLoc} onChange={e => setFromLoc(e.target.value)} placeholder="From location" className="w-full px-3 py-2 bg-gray-700 text-white border border-gray-600 rounded" />{fromSugg.length > 0 && <ul className="absolute top-full left-0 right-0 mt-1 bg-gray-700 border border-gray-600 rounded shadow-lg max-h-40 overflow-y-auto z-10">{fromSugg.map((s, i) => <li key={i} onClick={() => { setFromLoc(s.place_name); setFromSugg([]); }} className="px-3 py-2 cursor-pointer text-white hover:bg-gray-600">{s.place_name}</li>)}</ul>}</div>}
-            <div className="relative mb-4"><input value={toLoc} onChange={e => setToLoc(e.target.value)} placeholder="To location" className="w-full px-3 py-2 bg-gray-700 text-white border border-gray-600 rounded" />{toSugg.length > 0 && <ul className="absolute top-full left-0 right-0 mt-1 bg-gray-700 border border-gray-600 rounded shadow-lg max-h-40 overflow-y-auto z-10">{toSugg.map((s, i) => <li key={i} onClick={() => { setToLoc(s.place_name); setToSugg([]); }} className="px-3 py-2 cursor-pointer text-white hover:bg-gray-600">{s.place_name}</li>)}</ul>}</div>
+            {!useCurrentLoc && <div className="relative mb-3"><input value={fromLoc} onChange={e => setFromLoc(e.target.value)} placeholder="From location" className="w-full px-3 py-2 bg-gray-700 text-white border border-gray-600 rounded" />{fromSugg.length > 0 && <ul className="absolute top-full left-0 right-0 mt-1 bg-[#04052e]border border-gray-600 rounded shadow-lg max-h-40 overflow-y-auto z-10">{fromSugg.map((s, i) => <li key={i} onClick={() => { setFromLoc(s.place_name); setFromSugg([]); }} className="px-3 py-2 cursor-pointer text-white hover:bg-gray-600">{s.place_name}</li>)}</ul>}</div>}
+            <div className="relative mb-4"><input value={toLoc} onChange={e => setToLoc(e.target.value)} placeholder="To location" className="w-full px-3 py-2 bg-[#04052e] text-white border border-gray-600 rounded" />{toSugg.length > 0 && <ul className="absolute top-full left-0 right-0 mt-1 bg-[#04052e] border border-gray-600 rounded shadow-lg max-h-40 overflow-y-auto z-10">{toSugg.map((s, i) => <li key={i} onClick={() => { setToLoc(s.place_name); setToSugg([]); }} className="px-3 py-2 cursor-pointer text-white hover:bg-gray-600">{s.place_name}</li>)}</ul>}</div>
             <button onClick={handleSubmit} disabled={loading || !imageIpfsHash} className="w-full px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed">
               {loading ? "Creating..." : "Create Service Request"}
             </button>
@@ -461,7 +461,7 @@ const MapComponent = () => {
       </div>
 
       {showList && (
-        <div className="absolute top-44 left-4 z-[1000] w-96 bg-gray-800 border border-gray-600 rounded-lg shadow-lg p-4 max-h-[70vh] overflow-y-auto">
+        <div className="absolute top-42 left-4 z-[1000] w-96 bg-[#10002b] border border-gray-600 rounded-lg shadow-lg p-4 max-h-[70vh] overflow-y-auto">
           <div className="flex justify-between mb-4">
             <h3 className="text-white font-medium">Active Services ({services.length})</h3>
             <button onClick={() => setShowList(false)} className="text-gray-400 hover:text-white">✕</button>
@@ -470,7 +470,7 @@ const MapComponent = () => {
             <p className="text-gray-400 text-sm text-center py-4">No active services</p>
           ) : (
             services.map(s => (
-              <div key={s.id} className="bg-gray-700 p-3 rounded mb-3 border border-gray-600">
+              <div key={s.id} className="bg-[#240046] p-3 rounded mb-3 border border-gray-600">
                 <h4 className="text-white font-medium text-sm mb-2">{s.serviceName}</h4>
                 
                 {/* Service Request Image */}
@@ -509,7 +509,7 @@ const MapComponent = () => {
                 )}
                 
                 <div className="space-y-1 mb-2">
-                  <p className="text-gray-300 text-xs">💰 {s.flowAmount} ETH</p>
+                  <p className="text-gray-300 text-xs">💰 {s.flowAmount} FLOW</p>
                   <p className="text-gray-300 text-xs">📍 {s.fromLocation} → {s.toLocation}</p>
                   <p className="text-gray-400 text-xs">👤 Requester: {s.requester?.slice(0, 6)}...{s.requester?.slice(-4)}</p>
                   {s.nftTokenId && (
@@ -640,7 +640,7 @@ const MapComponent = () => {
                       disabled={loading || isMining}
                       className="w-full px-3 py-2 bg-green-600 text-white text-sm rounded hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed font-bold shadow-lg"
                     >
-                      {loading || isMining ? "Processing..." : "✓ Verify & Release " + s.flowAmount + " ETH"}
+                      {loading || isMining ? "Processing..." : "✓ Verify & Release " + s.flowAmount + " FLOW"}
                     </button>
                     <p className="text-xs text-green-200 mt-2 text-center">
                       Review the completion photo above. Clicking verify will burn the NFT and release payment to the service provider.
@@ -693,7 +693,7 @@ const MapComponent = () => {
               <Popup>
                 <div className="text-sm">
                   <h4 className="font-medium">{s.serviceName}</h4>
-                  <p>💰 {s.flowAmount} ETH</p>
+                  <p>💰 {s.flowAmount} FLOW</p>
                   <p>📍 Start: {s.fromLocation}</p>
                 </div>
               </Popup>

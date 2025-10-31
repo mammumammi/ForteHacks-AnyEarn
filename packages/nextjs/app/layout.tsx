@@ -5,14 +5,14 @@ import "~~/styles/globals.css";
 import { getMetadata } from "~~/utils/scaffold-eth/getMetadata";
 
 export const metadata = getMetadata({
-  title: "Scaffold-ETH 2 App",
-  description: "Built with 🏗 Scaffold-ETH 2",
+  title: "AnyEarn",
+  description: "Your Gig Market",
 });
 
-const ScaffoldEthApp = ({ children }: { children: React.ReactNode }) => {
+const FullScreenMapLayout = ({ children }: { children: React.ReactNode }) => {
   return (
     <html suppressHydrationWarning className={``}>
-      <body>
+      <body className="overflow-hidden">
         <ThemeProvider enableSystem>
           <ScaffoldEthAppWithProviders>{children}</ScaffoldEthAppWithProviders>
         </ThemeProvider>
@@ -21,4 +21,4 @@ const ScaffoldEthApp = ({ children }: { children: React.ReactNode }) => {
   );
 };
 
-export default ScaffoldEthApp;
+export default FullScreenMapLayout;
