@@ -1,80 +1,50 @@
-# 🏗 Scaffold-ETH 2
+AnyEarn
+The World's First Flow On-Chain Gig and Services Marketplace
 
-<h4 align="center">
-  <a href="https://docs.scaffoldeth.io">Documentation</a> |
-  <a href="https://scaffoldeth.io">Website</a>
-</h4>
+🌊 Want to go with the flow? Then you have to have some FLOW in your pockets!
 
-🧪 An open-source, up-to-date toolkit for building decentralized applications (dapps) on the Ethereum blockchain. It's designed to make it easier for developers to create and deploy smart contracts and build user interfaces that interact with those contracts.
+Live Demo: https://forte-hacks-any-earn-nextjs.vercel.app/
 
-⚙️ Built using NextJS, RainbowKit, Hardhat, Wagmi, Viem, and Typescript.
+Overview
+AnyEarn is a decentralized marketplace where anyone can earn FLOW tokens by completing gigs and services. From home delivery to college assignments, anything goes on AnyEarn. Turn your daily commute into a side hustle by completing service requests while traveling from point A to point B.
 
-- ✅ **Contract Hot Reload**: Your frontend auto-adapts to your smart contract as you edit it.
-- 🪝 **[Custom hooks](https://docs.scaffoldeth.io/hooks/)**: Collection of React hooks wrapper around [wagmi](https://wagmi.sh/) to simplify interactions with smart contracts with typescript autocompletion.
-- 🧱 [**Components**](https://docs.scaffoldeth.io/components/): Collection of common web3 components to quickly build your frontend.
-- 🔥 **Burner Wallet & Local Faucet**: Quickly test your application with a burner wallet and local faucet.
-- 🔐 **Integration with Wallet Providers**: Connect to different wallet providers and interact with the Ethereum network.
+Features
+Decentralized Service Marketplace: Post and complete gigs entirely on-chain
 
-![Debug Contracts tab](https://github.com/scaffold-eth/scaffold-eth-2/assets/55535804/b237af0c-5027-4849-a5c1-2e31495cccb1)
+Secure Data Storage: User data stored on IPFS via Thirdweb
 
-## Requirements
+Interactive Maps: Real-time location-based services powered by Mapbox
 
-Before you begin, you need to install the following tools:
+Non-Discriminatory Payments: Equal pay for equal work, regardless of who you are
 
-- [Node (>= v20.18.3)](https://nodejs.org/en/download/)
-- Yarn ([v1](https://classic.yarnpkg.com/en/docs/install/) or [v2+](https://yarnpkg.com/getting-started/install))
-- [Git](https://git-scm.com/downloads)
+Flexible Earning: Complete one service or 100 - it's up to you
 
-## Quickstart
+Tech Stack
+Blockchain: Flow Testnet
 
-To get started with Scaffold-ETH 2, follow the steps below:
+Storage: Thirdweb IPFS
 
-1. Install dependencies if it was skipped in CLI:
+Maps: Mapbox API
 
-```
-cd my-dapp-example
-yarn install
-```
+Frontend: Next.js with TypeScript
 
-2. Run a local network in the first terminal:
+Deployment: Vercel
 
-```
-yarn chain
-```
+Smart Contracts
+ServiceContract: 0xfF4f2C5ee5a4e2ae0F818cd89780D000314adf4c
 
-This command starts a local Ethereum network using Hardhat. The network runs on your local machine and can be used for testing and development. You can customize the network configuration in `packages/hardhat/hardhat.config.ts`.
+ServiceNFT: 0x953693c87E78166c9Ea4AfC90acA8792F95Da8d4
 
-3. On a second terminal, deploy the test contract:
+Why AnyEarn?
+Traditional gig platforms come with high fees, data privacy concerns, and centralized control. AnyEarn solves these problems by:
 
-```
-yarn deploy
-```
+Ensuring data security through decentralized storage
 
-This command deploys a test smart contract to the local network. The contract is located in `packages/hardhat/contracts` and can be modified to suit your needs. The `yarn deploy` command uses the deploy script located in `packages/hardhat/deploy` to deploy the contract to the network. You can also customize the deploy script.
+Eliminating intermediaries for direct peer-to-peer transactions
 
-4. On a third terminal, start your NextJS app:
+Providing transparent, on-chain transaction history
 
-```
-yarn start
-```
+Offering a trustless environment for both service providers and requesters
 
-Visit your app on: `http://localhost:3000`. You can interact with your smart contract using the `Debug Contracts` page. You can tweak the app config in `packages/nextjs/scaffold.config.ts`.
-
-Run smart contract test with `yarn hardhat:test`
-
-- Edit your smart contracts in `packages/hardhat/contracts`
-- Edit your frontend homepage at `packages/nextjs/app/page.tsx`. For guidance on [routing](https://nextjs.org/docs/app/building-your-application/routing/defining-routes) and configuring [pages/layouts](https://nextjs.org/docs/app/building-your-application/routing/pages-and-layouts) checkout the Next.js documentation.
-- Edit your deployment scripts in `packages/hardhat/deploy`
-
-
-## Documentation
-
-Visit our [docs](https://docs.scaffoldeth.io) to learn how to start building with Scaffold-ETH 2.
-
-To know more about its features, check out our [website](https://scaffoldeth.io).
-
-## Contributing to Scaffold-ETH 2
-
-We welcome contributions to Scaffold-ETH 2!
-
-Please see [CONTRIBUTING.MD](https://github.com/scaffold-eth/scaffold-eth-2/blob/main/CONTRIBUTING.md) for more information and guidelines for contributing to Scaffold-ETH 2.
+Built For
+ForteHacks 2025
