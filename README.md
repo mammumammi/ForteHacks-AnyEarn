@@ -5,6 +5,14 @@ The World's First Flow On-Chain Gig and Services Marketplace
 
 Live Demo: https://forte-hacks-any-earn-nextjs.vercel.app/
 
+Project is built on Flow
+Built on Flow Testnet
+Smart Contracts
+ServiceContract: 0xfF4f2C5ee5a4e2ae0F818cd89780D000314adf4c
+
+ServiceNFT: 0x953693c87E78166c9Ea4AfC90acA8792F95Da8d4
+
+
 Overview
 AnyEarn is a decentralized marketplace where anyone can earn FLOW tokens by completing gigs and services. From home delivery to college assignments, anything goes on AnyEarn. Turn your daily commute into a side hustle by completing service requests while traveling from point A to point B.
 
@@ -30,10 +38,6 @@ Frontend: Next.js with TypeScript
 
 Deployment: Vercel
 
-Smart Contracts
-ServiceContract: 0xfF4f2C5ee5a4e2ae0F818cd89780D000314adf4c
-
-ServiceNFT: 0x953693c87E78166c9Ea4AfC90acA8792F95Da8d4
 
 Why AnyEarn?
 Traditional gig platforms come with high fees, data privacy concerns, and centralized control. AnyEarn solves these problems by:
