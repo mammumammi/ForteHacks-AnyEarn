@@ -7,10 +7,13 @@ Live Demo: https://forte-hacks-any-earn-nextjs.vercel.app/
 
 Project is built on Flow
 Built on Flow Testnet
-Smart Contracts
-ServiceContract: 0xfF4f2C5ee5a4e2ae0F818cd89780D000314adf4c
 
-ServiceNFT: 0x953693c87E78166c9Ea4AfC90acA8792F95Da8d4
+Smart Contracts
+ServiceContract: 
+0xfF4f2C5ee5a4e2ae0F818cd89780D000314adf4c
+
+ServiceNFT: 
+0x953693c87E78166c9Ea4AfC90acA8792F95Da8d4
 
 
 Overview
